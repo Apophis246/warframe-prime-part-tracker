@@ -1,23 +1,4 @@
 # docker-compose.yml — outline only, no implementation yet.
-#
-# Three services, per the blueprint, used for both local dev and (as-is)
-# on the deployed VM:
-
-# postgres:
-#   - official postgres image (pin a version, don't use `latest`)
-#   - a named volume, so data survives container restarts
-#   - reads POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB from env_file
-#     (.env locally; the fetched-from-Vault env file on the VM)
-
-# backend:
-#   - builds from backend/Dockerfile (build: context, not a pre-pulled
-#     image, for local dev)
-#   - needs DATABASE_URL (pointing at the postgres service — in Compose,
-#     service names double as hostnames) and the JWT secret, via env_file
-#   - depends_on: postgres (look up: depends_on alone doesn't wait for
-#     Postgres to be ready to accept connections, just for the container
-#     to start — worth knowing if you hit startup race conditions)
-#   - exposes/maps the port uvicorn listens on
 
 # frontend:
 #   - builds from frontend/Dockerfile
@@ -27,3 +8,30 @@
 # Also needed: a top-level volumes: entry for postgres's named volume,
 # and (optional but common) a shared network so service-name-based
 # hostname resolution definitely works between containers.
+
+services:
+  postgres:
+    image: postgres:18
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+
+  backend:
+    build: ./backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
