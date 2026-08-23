@@ -1,10 +1,10 @@
-# .dockerignore — outline only, no implementation yet.
-#
-# Same idea as .gitignore, but for what NOT to send into the Docker
-# build context (everything in this folder gets sent to the Docker
-# daemon when you build, unless excluded here — irrelevant files just
-# slow the build down and bloat the image if accidentally copied in).
-#
-# Worth excluding: __pycache__/, *.pyc, a venv folder if you use one,
-# .git (if it'd otherwise be included), and this repo's .env (never
-# belongs inside the image).
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.git/
+.env

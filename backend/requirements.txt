@@ -1,16 +1,13 @@
-# requirements.txt — outline only, no versions pinned yet.
-#
-# Categories of packages this backend will need (look up current package
-# names/versions for each — don't guess):
-#
-#   - the web framework itself (FastAPI) and an ASGI server to run it
-#     (uvicorn)
-#   - an ORM to talk to Postgres (SQLAlchemy) and a Postgres driver
-#     (psycopg2-binary, or an async equivalent if you go that route)
-#   - password hashing (passlib, or similar, with a bcrypt backend)
-#   - JWT creation/verification (python-jose or PyJWT)
-#   - reading .env files (python-dotenv), unless you handle env vars
-#     another way
-#
-# Worth deciding: pin exact versions (==) for reproducibility, or loose
-# minimums (>=)? Pinned is usually the safer default for a deployed app.
+# Web framework + server
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+
+# ORM + Postgres driver
+sqlalchemy==2.0.52
+psycopg2-binary==2.9.12
+
+# Environment variable loading
+python-dotenv==1.2.3
+
+# Auth-related packages (password hashing, JWT) get added here once
+# auth.py is actually being built — not needed yet for models.py/database.py.

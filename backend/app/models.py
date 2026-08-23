@@ -11,16 +11,43 @@
 # Look up: SQLAlchemy declarative models, Column, ForeignKey, relationship(),
 # and (if you want item_type constrained) Python's enum.Enum used as a column type.
 
-
-# --- User ---------------------------------------------------------------
-# Fields:
-#   id               -> primary key
-#   username         -> string, should be unique
-#   email            -> string, should be unique
-#   password_hash    -> string (never store the raw password)
+# --- User -----------------------------------------------------------------
 #
-# Relationship:
-#   one User -> many InventoryEntry (a user's owned parts)
+# Pseudocode — translate this into real SQLAlchemy syntax yourself.
+#
+# class User(Base):
+#     table name = "users"
+#
+#     id             : integer, primary key, auto-increment
+#     username       : string, unique = true, nullable = false
+#     email          : string, unique = true, nullable = false
+#     password_hash  : string, nullable = false   # never a raw password
+#
+#     inventory_entries : relationship -> list of InventoryEntry
+#         # "one User has many InventoryEntry rows" — the reverse side of
+#         # InventoryEntry.user_id below. Look up: SQLAlchemy's
+#         # relationship() and how it pairs with a ForeignKey on the
+#         # OTHER class to link two tables without you writing the join
+#         # yourself every time.
+#
+# Worth thinking about:
+#   - nothing here stores plaintext passwords or the JWT itself — hashing
+#     happens in auth.py at register time, not in this class.
+
+class User(Base):
+    """
+    Fields:
+        id               -> primary key
+        username         -> string, should be unique
+        email            -> string, should be unique
+        password_hash    -> string (never store the raw password)
+
+    Relationship:
+        one User -> many InventoryEntry (a user's owned parts)
+
+    Decided: login works by either username or email (see auth.py later) —
+    so the login lookup needs to match against both fields, not just one.
+    """
 
 
 # --- PrimeItem ------------------------------------------------------------
