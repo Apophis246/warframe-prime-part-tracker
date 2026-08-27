@@ -1,11 +1,12 @@
-# database.py — outline only, no implementation yet.
-#
 # This is where the SQLAlchemy engine, session, and Base live — the shared
 # infrastructure every model and route depends on, but that isn't itself a
 # model or a route.
 
 # --- Base -----------------------------------------------------------------
-# Base = declarative_base()
+from sqlalchemy.orm import DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
 #
 # Every class in models.py will import and inherit from this. It's what
 # lets SQLAlchemy track "these are all my mapped tables" in one place
