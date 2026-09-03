@@ -1,7 +1,10 @@
-# main.py — outline only, no implementation yet.
-#
-# This is the FastAPI application's entrypoint — what uvicorn actually
-# runs.
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from . import models
+from .database import Base, engine
 
 # What belongs here:
 #   - create the FastAPI() app instance
@@ -18,3 +21,17 @@
 # What does NOT belong here: route logic itself (routes.py/auth.py),
 # model definitions (models.py). This file wires things together, it
 # doesn't implement them.
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(engine)
+    yield
+
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8180"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
