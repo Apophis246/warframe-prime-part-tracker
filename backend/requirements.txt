@@ -9,6 +9,9 @@ psycopg2-binary==2.9.12
 # HTTP client (seed.py fetches the WFCD catalog)
 httpx==0.28.1
 
+# Email format validation (pydantic's EmailStr)
+email-validator==2.3.0
+
 # Environment variable loading
 python-dotenv==1.2.3
 

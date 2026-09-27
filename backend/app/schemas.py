@@ -10,31 +10,63 @@
 # Look up: Pydantic BaseModel, and FastAPI's response_model= parameter
 # on route decorators.
 
+from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
+from typing import List, Literal, Optional, Self
+
 # --- Auth schemas -----------------------------------------------------
-# UserCreate   -> what /auth/register accepts: username, email, password
-#                 (plaintext here — hashing happens in auth.py, never in
-#                 the schema or the route)
-# UserLogin    -> what /auth/login accepts: username/email + password
-# Token        -> what /auth/login returns: access_token, token_type
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+class UserLogin(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: str
+
+    @model_validator(mode='after')
+    def check_valid_info(self) -> Self:
+        if self.username is None and self.email is None:
+            raise ValueError("You must provide a username or email")
+        return self
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 # --- PrimeItem / PartRequirement schemas (read-only) -----------------
-# PartRequirementOut  -> id, part_name, quantity_required
-# PrimeItemOut        -> id, name, item_type, and a nested list of
-#                         PartRequirementOut (this is the /items response
-#                         shape — the static catalog)
-#
-# Worth thinking about: nesting one schema inside another is normal in
-# Pydantic, and it's how you'll express "an item and all its parts" in
-# one response without a second request.
+class PartRequirementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    part_name: str
+    quantity_required: int
+    
+class PrimeItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    item_type: str
+    part_requirements: List[PartRequirementOut]
 
 # --- InventoryEntry schemas -------------------------------------------
-# InventoryEntryOut     -> part_requirement_id, quantity_owned
-# InventoryEntryUpdate  -> what PUT /inventory/{part_requirement_id}
-#                           accepts in its body: just quantity_owned
+class InventoryEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    part_requirement_id: int
+    quantity_owned: int
+
+class InventoryEntryUpdate(BaseModel):
+    quantity_owned: int
 
 # --- Sets schema ---------------------------------------------------------
-# PartStatusOut  -> part_name, quantity_required, quantity_owned
-# SetStatusOut   -> prime_item id/name, status ("complete"/"partial"/
-#                    "none"), and the list of PartStatusOut so the
-#                    frontend can show exactly what's missing on a
-#                    partial set
+class PartStatusOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    part_name: str
+    quantity_required: int
+    quantity_owned: int
+
+class SetStatusOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    status: Literal["complete", "partial", "none"]
+    part_status: List[PartStatusOut]
