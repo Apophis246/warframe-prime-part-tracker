@@ -15,5 +15,6 @@ email-validator==2.3.0
 # Environment variable loading
 python-dotenv==1.2.3
 
-# Auth-related packages (password hashing, JWT) get added here once
-# auth.py is actually being built — not needed yet for models.py/database.py.
+# Auth: password hashing (Argon2 via pwdlib) + JWT
+pwdlib[argon2]==0.3.1
+pyjwt==2.15.1
