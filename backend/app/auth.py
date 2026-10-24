@@ -1,12 +1,5 @@
-# auth.py — outline only, no implementation yet.
-#
 # Handles the two unauthenticated routes plus the shared logic every
 # other route depends on for knowing "who is making this request."
-#
-# Packages (already in requirements.txt — rebuild the image if you
-# haven't since they were added):
-#   pwdlib[argon2]  -> password hashing
-#   pyjwt           -> token creation/verification
 
 import jwt
 import os
