@@ -8,88 +8,84 @@
 #   pwdlib[argon2]  -> password hashing
 #   pyjwt           -> token creation/verification
 
-from pwdlib import PasswordHash
+import jwt
+import os
 
-# --- Password hashing -------------------------------------------------
-# Never store or compare plaintext passwords. Hash on register, verify
-# the hash on login.
-#
-# Use pwdlib's PasswordHash.recommended() — it picks Argon2 with sane
-# parameters, generates a salt per password, and encodes the algorithm and
-# its settings into the stored hash string, so verification works without
-# you tracking any of that yourself. Create it once at module level and
-# reuse it; building it per request is wasted work.
-#
-# It gives you two methods: one to hash a new password, one to verify a
-# plaintext attempt against a stored hash. Look those up rather than
-# guessing the names.
-#
-# Why not hashlib: SHA-256 and friends are built to be fast, which is
-# exactly wrong here — a leaked database can be brute-forced at billions
-# of guesses per second. Argon2 is deliberately slow and memory-hard.
-# (hashlib.scrypt and hashlib.pbkdf2_hmac ARE real password KDFs, but
-# then you manage salts and the stored format by hand.)
-#
-# Note: passlib is what most older tutorials use. It's effectively
-# unmaintained — last release 2020, broken on Python 3.13 — so don't.
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from pwdlib import PasswordHash
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
+
+from .database import get_db
+from .models import User
+from .schemas import UserCreate, UserLogin, Token
+
+password_hash = PasswordHash.recommended()
+router = APIRouter(prefix="/auth", tags=["auth"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+JWT_SECRET_KEY = os.environ["JWT_SECRET_KEY"]
+JWT_ALGORITHM = "HS256"
+TOKEN_LIFETIME_MINUTES = 60
+
+
 
 
 # --- POST /auth/register ------------------------------------------
-# Accepts UserCreate (schemas.py). Steps:
-#   1. check username/email isn't already taken
-#   2. hash the password
-#   3. create and save a User row
-#   4. return... what? (a Token, so they're logged in immediately? Or
-#      just a success response and they log in separately? Your call.)
-#
-# Worth thinking about: your User model has unique constraints on both
-# username and email, so the database will reject a duplicate even if
-# step 1 is skipped — but it'd surface as an IntegrityError, not a clean
-# 409/400 with a useful message.
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def user_register(new_user: UserCreate, db: Session=Depends(get_db)):
+    """
+    Registers a new user and ensures that the input email or username is unique
+    """
+    existing_username = db.scalar(select(User).where(User.username == new_user.username))
+    if existing_username:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+    existing_email = db.scalar(select(User).where(User.email == new_user.email))
+    if existing_email:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already taken")
+    
+    hashed = password_hash.hash(new_user.password)
+    new_user_row = User(username=new_user.username, email=new_user.email, password_hash=hashed)
+    db.add(new_user_row)
+    db.commit()
+
+    return {"message": "User registered"}
 
 
 # --- POST /auth/login ---------------------------------------------
-# Accepts UserLogin. Steps:
-#   1. look up the user by username OR email (the decision from earlier —
-#      UserLogin allows either, so the query has to match on both fields)
-#   2. verify the password against the stored hash
-#   3. if valid, issue a JWT with pyjwt containing enough to identify the
-#      user later (conventionally their id, as the token's "sub" claim)
-#      plus an expiry ("exp" claim — pyjwt enforces it automatically on
-#      decode)
-#   4. return a Token
-#
-# Worth thinking about: give the same error for "no such user" and "wrong
-# password". Distinguishing them tells an attacker which usernames exist.
+@router.post("/login")
+def user_login(user: UserLogin, db: Session=Depends(get_db)):
+    """
+    User login that verifies that the input username/email and password are correct
+    """
+    user_id = db.scalar(select(User).where(or_(User.username == user.username, User.email == user.email)))
+    if not user_id or not password_hash.verify(user.password, user_id.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Username/Email or Password", headers={"WWW-Authenticate": "Bearer"})
+    
+    payload = {
+        "sub": str(user_id.id), 
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=TOKEN_LIFETIME_MINUTES)
+        }
+    
+    encoded_jwt = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
+    login_token = Token(access_token = encoded_jwt, token_type = "bearer")
+
+    return login_token
 
 # --- get_current_user dependency ------------------------------------
-# This is the piece every OTHER route in routes.py depends on. It:
-#   1. reads the Authorization header (Bearer <token>)
-#   2. decodes/verifies the JWT (checks signature + expiry)
-#   3. looks up and returns the corresponding User row
-#   4. raises a 401 if any of that fails
-#
-# Look up: FastAPI's OAuth2PasswordBearer (or a plain Depends() reading
-# the header yourself), and pyjwt's encode/decode — note that decode
-# raises distinct exceptions for an expired token vs a bad signature, and
-# both should become a 401 rather than a 500.
-#
-# It depends on get_db from database.py for the user lookup, exactly like
-# the routes do.
-
-
-# --- The signing secret ------------------------------------------------
-# SETUP STEP, do this before writing the JWT code:
-#   - add JWT_SECRET_KEY to .env (and .env.example with a placeholder)
-#   - read it here with os.environ["JWT_SECRET_KEY"], same fail-loud
-#     pattern as DATABASE_URL in database.py
-#   - never hardcode it, never commit it
-#
-# This one matters more than the Postgres password: anyone who knows it
-# can mint a valid token for any user. Locally, anything random is fine.
-# For the VM, Terraform's random_password generates it and it goes into
-# Vault, per the blueprint.
-#
-# You also need to pick a signing algorithm (HS256 is the usual symmetric
-# default) and a token lifetime.
+def get_current_user(token=Depends(oauth2_scheme), db: Session=Depends(get_db)):
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
+    
+    user_id = int(payload["sub"])
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
+    
+    return user
+        
