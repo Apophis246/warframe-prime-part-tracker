@@ -1,7 +1,12 @@
-// The payoff screen. /sets does all the comparing server-side, so this is
-// mostly presentation: group by status, put complete sets first since those
-// are the ones you can actually sell, and show exactly what's missing on the
-// partial ones.
+// The payoff screen. /sets does the comparing server-side, so this is mostly
+// presentation: group by status, put complete sets first since those are the
+// ones you can actually sell, and show exactly what's missing on partial ones.
+//
+// It also fetches /items and /inventory. /sets alone can't drive the "sold a
+// set" action because PartStatusOut carries no part_requirement_id, and part
+// names aren't unique within an item (Akbronco Prime lists "Bronco Prime"
+// twice). /items gives the ids, /inventory gives the current counts, and both
+// are keyed by id — so the subtraction is unambiguous.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
@@ -15,10 +20,13 @@ const GROUPS = [
 
 export default function Sets() {
   const [sets, setSets] = useState([])
+  const [partsByItem, setPartsByItem] = useState({})  // item id -> part requirements
+  const [owned, setOwned] = useState({})              // part id -> quantity owned
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
   const [showEmpty, setShowEmpty] = useState(false)
+  const [sellingId, setSellingId] = useState(null)
 
   const { sessionExpired } = useAuth()
 
@@ -30,13 +38,22 @@ export default function Sets() {
     [sessionExpired],
   )
 
+  const load = useCallback(async () => {
+    const [setData, itemData, inventoryData] = await Promise.all([
+      api.sets(),
+      api.items(),
+      api.inventory(),
+    ])
+    setSets(setData)
+    setPartsByItem(Object.fromEntries(itemData.map((i) => [i.id, i.part_requirements])))
+    setOwned(
+      Object.fromEntries(inventoryData.map((e) => [e.part_requirement_id, e.quantity_owned])),
+    )
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    api
-      .sets()
-      .then((data) => {
-        if (!cancelled) setSets(data)
-      })
+    load()
       .catch((err) => {
         if (!cancelled) handleError(err)
       })
@@ -46,7 +63,34 @@ export default function Sets() {
     return () => {
       cancelled = true
     }
-  }, [handleError])
+  }, [load, handleError])
+
+  // Subtract one set's worth of parts: each part drops by exactly what the set
+  // requires, so spares survive. Floors at zero defensively, though a complete
+  // set means every part already meets its requirement.
+  const sellSet = useCallback(
+    async (itemId) => {
+      const parts = partsByItem[itemId]
+      if (!parts) return
+
+      setSellingId(itemId)
+      setError(null)
+      try {
+        await Promise.all(
+          parts.map((part) => {
+            const remaining = Math.max(0, (owned[part.id] ?? 0) - part.quantity_required)
+            return api.setQuantity(part.id, remaining)
+          }),
+        )
+        await load()
+      } catch (err) {
+        handleError(err)
+      } finally {
+        setSellingId(null)
+      }
+    },
+    [partsByItem, owned, load, handleError],
+  )
 
   const counts = useMemo(() => {
     const tally = { complete: 0, partial: 0, none: 0 }
@@ -120,7 +164,14 @@ export default function Sets() {
             ) : (
               <div className="set-grid">
                 {group.sets.map((set) => (
-                  <SetCard key={set.id} set={set} />
+                  <SetCard
+                    key={set.id}
+                    set={set}
+                    parts={partsByItem[set.id]}
+                    owned={owned}
+                    onSell={sellSet}
+                    busy={sellingId === set.id}
+                  />
                 ))}
               </div>
             )}
@@ -139,8 +190,33 @@ function SummaryTile({ label, value, tone }) {
   )
 }
 
-function SetCard({ set }) {
+function SetCard({ set, parts, owned, onSell, busy }) {
+  const [confirming, setConfirming] = useState(false)
   const missing = set.part_status.filter((p) => p.quantity_owned < p.quantity_required)
+
+  // How many parts survive the sale — shown so it's obvious when you have
+  // spares and the set will still be sellable afterwards.
+  const leftovers = (parts ?? []).reduce(
+    (total, part) => total + Math.max(0, (owned[part.id] ?? 0) - part.quantity_required),
+    0,
+  )
+
+  // A stray click shouldn't silently delete parts, but a modal for something
+  // you'll do often is heavy. The button asks once, in place.
+  useEffect(() => {
+    if (!confirming) return
+    const timer = setTimeout(() => setConfirming(false), 4000)
+    return () => clearTimeout(timer)
+  }, [confirming])
+
+  function handleClick() {
+    if (confirming) {
+      setConfirming(false)
+      onSell(set.id)
+    } else {
+      setConfirming(true)
+    }
+  }
 
   return (
     <article className={`card set-card set-${set.status}`}>
@@ -150,11 +226,24 @@ function SetCard({ set }) {
       </header>
 
       {set.status === 'complete' ? (
-        <p className="set-note">All parts owned.</p>
+        <>
+          <p className="set-note">
+            All parts owned.
+            {leftovers > 0 && ` ${leftovers} spare part${leftovers === 1 ? '' : 's'} beyond this set.`}
+          </p>
+          <button
+            type="button"
+            className={`button button-sell ${confirming ? 'is-confirming' : ''}`}
+            onClick={handleClick}
+            disabled={busy || !parts}
+          >
+            {busy ? 'Removing…' : confirming ? 'Confirm — remove parts' : 'Sold a set'}
+          </button>
+        </>
       ) : (
         <ul className="missing-list">
-          {missing.map((part) => (
-            <li key={part.part_name + part.quantity_required}>
+          {missing.map((part, index) => (
+            <li key={`${part.part_name}-${index}`}>
               <span className="missing-name">{part.part_name}</span>
               <span className="missing-count">
                 {part.quantity_owned} / {part.quantity_required}
