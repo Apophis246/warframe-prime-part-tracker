@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
 from .auth import router as auth_router
@@ -30,12 +29,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:8180"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# No CORS middleware: nginx proxies /api to this service, so the browser only
+# ever talks to one origin and cross-origin requests never happen. Add it back
+# if anything is ever served from a different origin than the API.
 app.include_router(auth_router)
 app.include_router(routes_router)

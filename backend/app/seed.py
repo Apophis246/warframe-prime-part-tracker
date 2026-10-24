@@ -26,7 +26,11 @@ from .models import PrimeItem, PartRequirement, ItemType
 logger = logging.getLogger(__name__)
 
 
-BASE_URL = "https://raw.githubusercontent.com/WFCD/warframe-items/master/data/json"
+# Pinned to a commit, not master: WFCD changed their schema on 2026-09-23 and
+# dropped `name` and `tradable` from components, which broke the parser below.
+# 859cb0a7f290 (2026-09-23) is the last commit with the full format.
+# Bump this when you want newer items, and re-check the format still matches.
+BASE_URL = "https://raw.githubusercontent.com/WFCD/warframe-items/859cb0a7f290/data/json"
 SOURCES = {
     "Warframes.json": ItemType.WARFRAME,
     "Primary.json": ItemType.WEAPON,
