@@ -1,0 +1,11 @@
+
+[0m[1m[31mPlanning failed.[0m[1m Terraform encountered an error while generating this plan.[0m
+
+[0m[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mcan not create client, bad configuration: did not find a proper configuration for private key[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with provider["registry.terraform.io/oracle/oci"],
+[31m│[0m [0m  on main.tf line 16, in provider "oci":
+[31m│[0m [0m  16: provider "oci" [4m{[0m[0m
+[31m│[0m [0m
+[31m╵[0m[0m

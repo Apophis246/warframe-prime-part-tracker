@@ -8,5 +8,7 @@
 # instance:
 #
 #   oci_core_instance.<name>.public_ip
-#
-# Look up: the output block syntax itself (value, description).
+
+output "public_ip" {
+  value = oci_core_instance.instance.public_ip
+}

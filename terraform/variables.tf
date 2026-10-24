@@ -78,11 +78,11 @@ variable "instance_shape" {
 variable "instance_ocpus" {
   type        = number
   description = "OCPUs for the instance; 2 is the Always Free maximum"
-  default     = 2
+  default     = 1
 }
 
 variable "instance_memory_in_gbs" {
   type        = number
   description = "Memory in GB; 12 is the Always Free maximum"
-  default     = 12
+  default     = 6
 }
