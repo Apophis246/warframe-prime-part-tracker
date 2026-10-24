@@ -21,18 +21,6 @@ class ItemType(enum.Enum):
     WARFRAME = "warframe"
     WEAPON = "weapon"
 
-# --- User -----------------------------------------------------------------
-#
-#     inventory_entries : relationship -> list of InventoryEntry
-#         # "one User has many InventoryEntry rows" — the reverse side of
-#         # InventoryEntry.user_id below. Look up: SQLAlchemy's
-#         # relationship() and how it pairs with a ForeignKey on the
-#         # OTHER class to link two tables without you writing the join
-#         # yourself every time.
-#
-# Worth thinking about:
-#   - nothing here stores plaintext passwords or the JWT itself — hashing
-#     happens in auth.py at register time, not in this class.
 
 class User(Base):
     """
