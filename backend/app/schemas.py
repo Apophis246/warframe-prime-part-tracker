@@ -1,14 +1,9 @@
-# schemas.py — outline only, no implementation yet.
-#
-# These are Pydantic models — separate from the SQLAlchemy models in
+# Pydantic models — separate from the SQLAlchemy models in
 # models.py. SQLAlchemy models describe database tables; these describe
 # the shape of JSON going in and out of the API. Keeping them separate
 # means you control exactly what a client can send (e.g. never accept a
 # raw password_hash) and exactly what gets returned (e.g. never return
 # password_hash at all).
-#
-# Look up: Pydantic BaseModel, and FastAPI's response_model= parameter
-# on route decorators.
 
 from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
 from typing import List, Literal, Optional, Self

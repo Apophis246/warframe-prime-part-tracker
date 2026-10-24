@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from . import models
+from . import models  # noqa: F401 — importing registers the tables on Base.metadata
 from .auth import router as auth_router
 from .database import Base, engine
 from .routes import router as routes_router

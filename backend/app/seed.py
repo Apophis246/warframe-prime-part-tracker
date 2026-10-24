@@ -10,12 +10,6 @@ primes appear without anyone editing the app.
     docker compose run --rm backend python -m app.seed
 """
 
-# Pseudocode — translate into real Python yourself.
-#
-# Imports you'll need: httpx (already in requirements.txt), select from
-# sqlalchemy, and from your own modules: Base, SessionLocal, engine from
-# .database — plus PrimeItem, PartRequirement, ItemType from .models.
-
 import httpx
 import logging
 

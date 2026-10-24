@@ -1,15 +1,8 @@
-# models.py — outline only, no implementation yet.
+# SQLAlchemy models — the four tables the whole app is built on.
 #
-# This assumes SQLAlchemy (the standard ORM pairing for FastAPI + Postgres).
-# If you decide on something else, this structure still applies conceptually.
-#
-# Whatever you use will need:
-#   - a declarative Base (usually defined in database.py, imported here)
-#   - a Column type + primary key convention
-#   - a way to express foreign keys and relationships between classes
-#
-# Look up: SQLAlchemy declarative models, Column, ForeignKey, relationship(),
-# and (if you want item_type constrained) Python's enum.Enum used as a column type.
+# PrimeItem and PartRequirement are the catalog (what exists, what it needs);
+# User and InventoryEntry are per-user data. Set completeness is computed in
+# routes.py at request time and never stored.
 
 import enum
 
