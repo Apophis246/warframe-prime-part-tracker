@@ -29,7 +29,16 @@ SOURCES = {
     "Warframes.json": ItemType.WARFRAME,
     "Primary.json": ItemType.WEAPON,
     "Secondary.json": ItemType.WEAPON,
-    "Melee.json": ItemType.WEAPON
+    "Melee.json": ItemType.WEAPON,
+    # Arch-weapons are weapons like any other; the only reason they live in
+    # separate files is how WFCD splits the dataset. Corvas Prime and
+    # Larkspur Prime are here, not in Primary/Secondary/Melee.
+    "Arch-Gun.json": ItemType.WEAPON,
+    "Arch-Melee.json": ItemType.WEAPON,
+    # Odonata Prime is an Archwing; the six prime sentinels are companions.
+    # Neither is a warframe or a weapon, hence their own enum values.
+    "Archwing.json": ItemType.ARCHWING,
+    "Sentinels.json": ItemType.SENTINEL
 }
 
 

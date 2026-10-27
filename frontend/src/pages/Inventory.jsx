@@ -120,6 +120,8 @@ export default function Inventory() {
             ['all', 'All'],
             ['warframe', 'Warframes'],
             ['weapon', 'Weapons'],
+            ['archwing', 'Archwings'],
+            ['sentinel', 'Sentinels'],
           ].map(([value, label]) => (
             <button
               key={value}

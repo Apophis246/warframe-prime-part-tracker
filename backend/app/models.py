@@ -13,6 +13,8 @@ from .database import Base
 class ItemType(enum.Enum):
     WARFRAME = "warframe"
     WEAPON = "weapon"
+    ARCHWING = "archwing"
+    SENTINEL = "sentinel"
 
 
 class User(Base):
