@@ -9,6 +9,7 @@
 # What it does, in order:
 #   1. install Docker + Compose from Docker's own apt repo
 #   2. open 80/443 in the host firewall (OCI's Ubuntu images block them)
+#   2b. add 2 GB of swap so the React build survives 1 GB of RAM
 #   3. clone the repo
 #   4. generate secrets and write a chmod 600 .env
 #   5. map the frontend to port 80
@@ -70,6 +71,28 @@ usermod -aG docker ubuntu
 iptables -I INPUT 6 -p tcp --dport 80 -j ACCEPT
 iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT
 netfilter-persistent save
+
+
+# --- 2b. Swap -------------------------------------------------------------
+# E2.1.Micro has 1 GB of RAM. That is plenty to RUN the stack (Postgres idles
+# around 100 MB, uvicorn 100-150 MB, nginx is negligible) but not to BUILD it:
+# the Vite/esbuild step wants well over 1 GB and gets OOM-killed without this.
+#
+# 2 GB swapfile. The build is slow because swap is disk, but it completes, and
+# it is a one-time cost per deploy rather than something felt at runtime.
+
+if [ ! -f /swapfile ]; then
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+# Prefer RAM, but let the kernel reach for swap before it starts killing the
+# build. The default of 60 thrashes on a box this small.
+sysctl -w vm.swappiness=10
+echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf
 
 
 # --- 3. The app -----------------------------------------------------------

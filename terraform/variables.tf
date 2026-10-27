@@ -71,18 +71,18 @@ variable "ssh_public_key" {
 
 variable "instance_shape" {
   type        = string
-  description = "Compute shape; Ampere A1 for the Always Free tier"
-  default     = "VM.Standard.A1.Flex"
+  description = "Compute shape; E2.1.Micro is the x86 Always Free shape"
+  default     = "VM.Standard.E2.1.Micro"
 }
 
 variable "instance_ocpus" {
   type        = number
-  description = "OCPUs for the instance; 2 is the Always Free maximum"
+  description = "OCPUs; unused on E2.1.Micro (fixed shape). Needed only if switching back to A1.Flex, where 2 is the Always Free maximum"
   default     = 1
 }
 
 variable "instance_memory_in_gbs" {
   type        = number
-  description = "Memory in GB; 12 is the Always Free maximum"
+  description = "Memory in GB; unused on E2.1.Micro (fixed shape). Needed only if switching back to A1.Flex, where 12 is the Always Free maximum"
   default     = 6
 }

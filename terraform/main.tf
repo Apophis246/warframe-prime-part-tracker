@@ -29,7 +29,7 @@ data "oci_identity_availability_domains" "ads" {
 data "oci_core_images" "images" {
   compartment_id = var.compartment_id
   shape          = var.instance_shape
-  display_name   = "Canonical-Ubuntu-24.04-aarch64-2026.09.18-0"
+  display_name   = "Canonical-Ubuntu-24.04-2026.09.18-0"
 }
 
 
@@ -108,10 +108,6 @@ resource "oci_core_instance" "instance" {
   compartment_id      = var.compartment_id
   shape               = var.instance_shape
   display_name        = "instance"
-  shape_config {
-    ocpus         = var.instance_ocpus
-    memory_in_gbs = var.instance_memory_in_gbs
-  }
   source_details {
     source_type = "image"
     source_id   = data.oci_core_images.images.images[0].id
